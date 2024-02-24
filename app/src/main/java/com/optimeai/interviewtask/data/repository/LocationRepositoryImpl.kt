@@ -9,7 +9,7 @@ import javax.inject.Inject
 class LocationRepositoryImpl @Inject constructor(private val locationDataSource: LocationDataSource) :
     LocationRepository {
 
-    override fun getLocationUpdates(): Flow<LocationDetails> = locationDataSource.fetchUpdates()
+    override fun getLocationUpdates(): Flow<LocationDetails> = locationDataSource.getUserLocation()
 
 
 }

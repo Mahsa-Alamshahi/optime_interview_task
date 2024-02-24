@@ -31,7 +31,7 @@ class LocationDataSource @Inject constructor(private var context: Context) {
     private var client = LocationServices.getFusedLocationProviderClient(context)
 
 
-    fun fetchUpdates(): Flow<LocationDetails> = callbackFlow {
+    fun getUserLocation(): Flow<LocationDetails> = callbackFlow {
 
 
         val locationRequest = LocationRequest().apply {
@@ -48,7 +48,10 @@ class LocationDataSource @Inject constructor(private var context: Context) {
                     LocationDetails(
                         latitude = it.latitude,
                         longitude = location.longitude,
-                        dateTime =  SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date())
+                        dateTime = SimpleDateFormat(
+                            "yyyy-MM-dd HH:mm:ss.SSS",
+                            Locale.getDefault()
+                        ).format(Date())
                     )
                 }
                 userLocation?.let { trySend(it) }
@@ -63,14 +66,7 @@ class LocationDataSource @Inject constructor(private var context: Context) {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-
+            return@callbackFlow
         }
         client.requestLocationUpdates(locationRequest, callBack, Looper.getMainLooper())
         awaitClose { client.removeLocationUpdates(callBack) }

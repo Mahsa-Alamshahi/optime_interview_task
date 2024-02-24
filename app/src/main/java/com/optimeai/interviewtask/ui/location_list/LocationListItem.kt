@@ -89,5 +89,5 @@ fun LocationListItem(location: LocationDetails) {
 @Preview(showSystemUi = true)
 @Composable
 fun PreviewLocationListItem() {
-    LocationListItem(location = LocationDetails(0.523322122, 0.9522222, "523222222L"))
+    LocationListItem(location = LocationDetails(0.523322122, 0.9522222, "2024:"))
 }

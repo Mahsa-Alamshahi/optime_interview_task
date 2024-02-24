@@ -1,7 +1,6 @@
 package com.optimeai.interviewtask.ui
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -12,8 +11,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
@@ -26,6 +26,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.optimeai.interviewtask.service.LocationService
 import com.optimeai.interviewtask.ui.location_list.LocationListScreenRoute
+import com.optimeai.interviewtask.ui.location_list.PermissionRequestDialog
 import com.optimeai.interviewtask.ui.theme.OptimeInterviewTaskTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -35,21 +36,20 @@ class MainActivity : ComponentActivity() {
 
 
     private val BACKGROUND_LOCATION_PERMISSION_CODE: Int = 1000
+    private val askPermissions = arrayListOf<String>()
+
+
+
     private val permissionsRequired = arrayOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION,
-//        Manifest.permission.ACCESS_BACKGROUND_LOCATION,
         Manifest.permission.POST_NOTIFICATIONS
     )
 
-    private val askPermissions = arrayListOf<String>()
 
-    val pushNotificationPermissionLauncher = registerForActivityResult(
+    private val pushNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-
-
-//                    viewModel.inputs.onTurnOnNotificationsClicked(granted)
     }
 
 
@@ -64,11 +64,14 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(false)
                 }
 
-
+                val openPermissionDialog = remember { mutableStateOf(false) }
 
                 val permissionsLauncher =
                     rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestMultiplePermissions()) { permissionsMap ->
-                        allPermissionGranted = permissionsMap.get(Manifest.permission.ACCESS_FINE_LOCATION) ?: false &&  permissionsMap.get(Manifest.permission.ACCESS_COARSE_LOCATION) ?: false
+                        allPermissionGranted =
+                            permissionsMap.get(Manifest.permission.ACCESS_FINE_LOCATION) ?: false && permissionsMap.get(
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            ) ?: false
                     }
 
                 for (permission in permissionsRequired) {
@@ -112,15 +115,7 @@ class MainActivity : ComponentActivity() {
 
 
                             } else {
-
                                 askPermissionForBackgroundUsage()
-
-//                                SideEffect {
-////                                    permissionsLauncher.launch(arrayOf( Manifest.permission.ACCESS_BACKGROUND_LOCATION))
-//
-//                                }
-
-//                                }
                             }
                         }
 //                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -136,18 +131,32 @@ class MainActivity : ComponentActivity() {
                     }
 
 
+                    when {
+                        openPermissionDialog.value -> {
+                            PermissionRequestDialog(
+                                onDismissRequest = { openPermissionDialog.value = false },
+                                onConfirmation = {
+                                    val intent =
+                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                    val uri = Uri.fromParts("package", packageName, null)
+                                    intent.data = uri
+                                    startActivity(intent)
+                                },
+                                dialogTitle = "Permission Needed!",
+                                dialogText = "Background Location Permission Needed!, tap \"Allow all time in the next screen\"",
+                                icon = Icons.Default.Info
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onStop() {
         super.onStop()
         checkPermission()
-
-//        startForegroundService(Intent(this, LocationService::class.java))
     }
 
 
@@ -159,7 +168,6 @@ class MainActivity : ComponentActivity() {
 
     private fun checkPermission() {
 
-
         var arePermissionsGranted = true
 
 
@@ -168,8 +176,6 @@ class MainActivity : ComponentActivity() {
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            // Fine Location permission is granted
-            // Check if current android version >= 11, if >= 11 check for Background Location permission
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 if ((ContextCompat.checkSelfPermission(
                         this,
@@ -210,29 +216,25 @@ class MainActivity : ComponentActivity() {
                 Manifest.permission.ACCESS_BACKGROUND_LOCATION
             )
         ) {
-            AlertDialog.Builder(this)
-                .setTitle("Permission Needed!")
-                .setMessage("Background Location Permission Needed!, tap \"Allow all time in the next screen\"")
-                .setPositiveButton(
-                    "OK"
-                ) { dialog, which ->
-//                    ActivityCompat.requestPermissions(
-//                        this@MainActivity,
-//                        arrayOf<String>(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
-//                        BACKGROUND_LOCATION_PERMISSION_CODE
-//                    )
-                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                    val uri = Uri.fromParts("package", packageName, null)
-                    intent.data = uri
-                    startActivity(intent)
 
-                }
-                .setNegativeButton(
-                    "CANCEL"
-                ) { dialog, which ->
-                    // User declined for Background Location Permission.
-                }
-                .create().show()
+
+//            AlertDialog.Builder(this)
+//                .setTitle("Permission Needed!")
+//                .setMessage("Background Location Permission Needed!, tap \"Allow all time in the next screen\"")
+//                .setPositiveButton(
+//                    "OK"
+//                ) { dialog, which ->
+//                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+//                    val uri = Uri.fromParts("package", packageName, null)
+//                    intent.data = uri
+//                    startActivity(intent)
+//
+//                }
+//                .setNegativeButton(
+//                    "CANCEL"
+//                ) { dialog, which ->
+//                }
+//                .create().show()
         } else {
             ActivityCompat.requestPermissions(
                 this,
