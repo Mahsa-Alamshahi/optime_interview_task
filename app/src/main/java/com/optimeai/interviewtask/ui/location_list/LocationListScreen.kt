@@ -20,16 +20,14 @@ fun LocationListScreenRoute() {
     val viewModel: LocationViewModel = hiltViewModel()
 
     LocationListScreen(
-        viewModel.locationListState,
-        viewModel::monitorUserLocation)
+        viewModel.locationListState, viewModel::monitorUserLocation
+    )
 }
-
 
 
 @Composable
 fun LocationListScreen(
-    userLocationList: SnapshotStateList<LocationDetails>,
-    monitorUserLocation: () -> Unit
+    userLocationList: SnapshotStateList<LocationDetails>, monitorUserLocation: () -> Unit
 ) {
 
 
@@ -39,7 +37,6 @@ fun LocationListScreen(
     LaunchedEffect(key1 = Unit) {
         monitorUserLocation()
     }
-
 
     Surface(
         modifier = Modifier
@@ -52,9 +49,7 @@ fun LocationListScreen(
                 LocationListItem(location = locationDetails)
             }
         }
-
     }
-
 
 }
 

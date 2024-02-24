@@ -71,7 +71,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
 
-// Dependency Injection
+    // Dependency Injection
     implementation("com.google.dagger:hilt-android:2.45")
     kapt("com.google.dagger:hilt-android-compiler:2.45")
     implementation("androidx.hilt:hilt-work:1.1.0")
@@ -88,15 +88,12 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
 
 
-    //Navigation
-    implementation("androidx.navigation:navigation-compose:2.7.5")
-
-
     // Multidex
     implementation("androidx.multidex:multidex:2.0.1")
 
 
     implementation("com.orhanobut:logger:2.2.0")
     implementation("com.google.android.gms:play-services-location:21.1.0")
+    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
 }

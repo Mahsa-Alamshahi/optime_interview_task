@@ -44,7 +44,7 @@ fun PermissionRequestDialog(
                         onDismissRequest()
                     }
                 ) {
-                    Text("Dismiss")
+                    Text("Cancel")
                 }
             }
         )

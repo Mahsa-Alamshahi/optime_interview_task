@@ -13,17 +13,20 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.core.app.ActivityCompat
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
 import com.optimeai.interviewtask.service.LocationService
 import com.optimeai.interviewtask.ui.location_list.LocationListScreenRoute
 import com.optimeai.interviewtask.ui.location_list.PermissionRequestDialog
@@ -35,119 +38,105 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
 
-    private val BACKGROUND_LOCATION_PERMISSION_CODE: Int = 1000
-    private val askPermissions = arrayListOf<String>()
-
-
-
-    private val permissionsRequired = arrayOf(
-        Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.ACCESS_COARSE_LOCATION,
-        Manifest.permission.POST_NOTIFICATIONS
-    )
-
-
-    private val pushNotificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-    }
-
-
+    @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             OptimeInterviewTaskTheme {
-
-
-                var allPermissionGranted by remember {
-                    mutableStateOf(false)
-                }
-
-                val openPermissionDialog = remember { mutableStateOf(false) }
-
-                val permissionsLauncher =
-                    rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestMultiplePermissions()) { permissionsMap ->
-                        allPermissionGranted =
-                            permissionsMap.get(Manifest.permission.ACCESS_FINE_LOCATION) ?: false && permissionsMap.get(
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ) ?: false
-                    }
-
-                for (permission in permissionsRequired) {
-                    if (ContextCompat.checkSelfPermission(
-                            this@MainActivity,
-                            permission
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        askPermissions.add(permission)
-                    }
-                }
-
-                allPermissionGranted = askPermissions.isEmpty()
-
-
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
+                    val context = LocalContext.current
+                    val showHome = remember { mutableStateOf(false) }
 
 
-                    if (!allPermissionGranted) {
-                        LaunchedEffect(key1 = Unit) {
-                            permissionsLauncher.launch(askPermissions.toTypedArray())
-                        }
-                    } else {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            if (ContextCompat.checkSelfPermission(
-                                    this,
-                                    Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                                ) == PackageManager.PERMISSION_GRANTED
-                            ) {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                    val showRationalDialog = remember { mutableStateOf(false) }
+                    if (showRationalDialog.value) {
 
-                                    } else {
+                        PermissionRequestDialog(
+                            onDismissRequest = { showRationalDialog.value = false },
+                            onConfirmation = {
+                                showRationalDialog.value = false
+                                val intent = Intent(
+                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.fromParts("package", context.packageName, null)
+                                )
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(intent, null)
 
-                                        pushNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                }
+                            },
+                            dialogTitle = "Permission Needed!",
+                            dialogText = "The location is important for this app. Please grant the permission.",
+                            icon = Icons.Default.Warning
+                        )
+                    }
 
+
+                    val locationPermissionState =
+                        rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+                    val backGroundlocationPermissionState =
+                        rememberPermissionState(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                    val notificationPermissionState =
+                        rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
+
+                    val requestNotificationPermissionLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.RequestPermission()
+                    ) { isGranted ->
+                        showRationalDialog.value = !isGranted
+                    }
+
+
+                    val requestBackgroundPermissionLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.RequestPermission()
+                    ) { isGranted ->
+                        if (isGranted) {
+                            showRationalDialog.value = false
+                            if (!notificationPermissionState.status.isGranted && locationPermissionState.status.shouldShowRationale) {
+                                showRationalDialog.value = true
 
                             } else {
-                                askPermissionForBackgroundUsage()
+                                requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                             }
-                        }
-//                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-//                            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-//
-//                            } else {
-//
-//                                pushNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-//                            }
-//                        }
 
+                        }
+                    }
+
+
+                    val requestPermissionLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.RequestPermission()
+                    ) { isGranted ->
+                        if (isGranted) {
+                            showHome.value = true
+                            showRationalDialog.value = false
+                            requestBackgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            if (!backGroundlocationPermissionState.status.isGranted && locationPermissionState.status.shouldShowRationale) {
+                                showRationalDialog.value = true
+
+                            } else {
+                                requestBackgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            }
+
+                        } else {
+                            showRationalDialog.value = true
+                        }
+                    }
+
+
+                    LifecycleEventEffect(Lifecycle.Event.ON_START) {
+                        if (!locationPermissionState.status.isGranted && locationPermissionState.status.shouldShowRationale) {
+                            showRationalDialog.value = true
+
+                        } else {
+                            requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                        }
+
+                    }
+
+                    if (showHome.value) {
                         LocationListScreenRoute()
                     }
 
-
-                    when {
-                        openPermissionDialog.value -> {
-                            PermissionRequestDialog(
-                                onDismissRequest = { openPermissionDialog.value = false },
-                                onConfirmation = {
-                                    val intent =
-                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                                    val uri = Uri.fromParts("package", packageName, null)
-                                    intent.data = uri
-                                    startActivity(intent)
-                                },
-                                dialogTitle = "Permission Needed!",
-                                dialogText = "Background Location Permission Needed!, tap \"Allow all time in the next screen\"",
-                                icon = Icons.Default.Info
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -156,7 +145,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        checkPermission()
+        checkServicePermissions()
     }
 
 
@@ -166,81 +155,21 @@ class MainActivity : ComponentActivity() {
     }
 
 
-    private fun checkPermission() {
+    private fun checkServicePermissions() {
+        var notificationPermission = false
+        var backgroundLocationPermission = false
 
-        var arePermissionsGranted = true
-
-
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermission =
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            backgroundLocationPermission = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.ACCESS_BACKGROUND_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                if ((ContextCompat.checkSelfPermission(
-                        this,
-                        Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                    ) != PackageManager.PERMISSION_GRANTED)
-//                    (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
-                ) {
-                    arePermissionsGranted = false
-//                    startForegroundService(Intent(this, LocationService::class.java))
-                    // Background Location Permission is granted so do your work here
-                }
-            }
-
-//                startForegroundService(Intent(this, LocationService::class.java))
-
-
-        } else {
-            arePermissionsGranted = false
         }
-
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            arePermissionsGranted = false
-        }
-
-        if (arePermissionsGranted) {
+        if (notificationPermission && backgroundLocationPermission) {
             startForegroundService(Intent(this, LocationService::class.java))
-        }
-    }
-
-
-    private fun askPermissionForBackgroundUsage() {
-        if (!ActivityCompat.shouldShowRequestPermissionRationale(
-                this@MainActivity,
-                Manifest.permission.ACCESS_BACKGROUND_LOCATION
-            )
-        ) {
-
-
-//            AlertDialog.Builder(this)
-//                .setTitle("Permission Needed!")
-//                .setMessage("Background Location Permission Needed!, tap \"Allow all time in the next screen\"")
-//                .setPositiveButton(
-//                    "OK"
-//                ) { dialog, which ->
-//                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-//                    val uri = Uri.fromParts("package", packageName, null)
-//                    intent.data = uri
-//                    startActivity(intent)
-//
-//                }
-//                .setNegativeButton(
-//                    "CANCEL"
-//                ) { dialog, which ->
-//                }
-//                .create().show()
-        } else {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf<String>(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
-                BACKGROUND_LOCATION_PERMISSION_CODE
-            )
         }
     }
 

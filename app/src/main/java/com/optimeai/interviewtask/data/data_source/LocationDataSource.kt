@@ -49,7 +49,7 @@ class LocationDataSource @Inject constructor(private var context: Context) {
                         latitude = it.latitude,
                         longitude = location.longitude,
                         dateTime = SimpleDateFormat(
-                            "yyyy-MM-dd HH:mm:ss.SSS",
+                            "yyyy-MM-dd HH:mm:ss",
                             Locale.getDefault()
                         ).format(Date())
                     )
@@ -66,7 +66,6 @@ class LocationDataSource @Inject constructor(private var context: Context) {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            return@callbackFlow
         }
         client.requestLocationUpdates(locationRequest, callBack, Looper.getMainLooper())
         awaitClose { client.removeLocationUpdates(callBack) }
